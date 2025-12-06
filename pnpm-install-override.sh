@@ -15,7 +15,8 @@ pnpm audit
 audit_status=$?
 
 if [ $audit_status -ne 0 ]; then
-	pnpm audit fix
+	echo "Running Audit Fix"
+	pnpm audit --fix
 	echo "Adding Overrides to package.json from pnpm-workspace.yaml"
 	node "$AUDIT_SCRIPT"
 fi
