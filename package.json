@@ -1,0 +1,11 @@
+{
+	"name": "pnpm-tools",
+	"version": "0.1",
+	"license": "MIT",
+	"author": "Paul Hughes (https://github.com/II-Paulus-II)",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/II-Paulus-II/PNPM_Tools"
+	},
+	"type": "module"
+}

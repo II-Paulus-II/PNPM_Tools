@@ -3,35 +3,16 @@
 /* Basic Node JS Dependencies */
 import fs from "fs";
 import path from "path";
-import { execSync } from "child_process";
-import { createRequire } from "module";
+import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { dirname } from 'node:path';
 
-const require = createRequire(import.meta.url);
+/* Import js-yaml */
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const libDir = join(__dirname, 'lib');
+const yamlPath = join(libDir, 'yaml-loader.mjs');
 
-/* Using JsYaml Package for parsing pnpm yaml files */ 
-function LoadJsYaml() 
-{
-	console.log("Loading JS-YAML Parser!");
-	try 
-	{
-		return require("js-yaml");
-	} 
-	catch 
-	{
-		try 
-		{
-			const globalRoot = execSync("pnpm root -g", { encoding: "utf8" }).trim();
-			return require(`${globalRoot}/js-yaml`);
-		} 
-		catch (err) 
-		{
-			console.error("Package js-yaml not found. Install globally with:\n\n  pnpm add -g js-yaml@4.1\n");
-			process.exit(1);
-		}
-	}
-}
-
-const yaml = LoadJsYaml();
+const { default: yaml } = await import(yamlPath);
 
 /* Read Workspace Yaml file */
 const WORKSPACE_LOCKFILE = "pnpm-workspace.yaml";
@@ -112,52 +93,53 @@ function SortDuplicatesInOverridesData(overridesData)
 	return sortedOverridesData;
 }
 
-/* Find Keys in Package.json */
-function FindKeyInJsonObject(obj, searchKey)
+/* Change Keys in Package.json */
+function ChangeKeyInJsonObject(obj, searchKey, newValue)
 {
-	if (obj === null || typeof obj !== 'object') 
+	if (obj === null || typeof obj !== "object") 
 	{
-		return undefined;
+		return false;
 	}
 
-	for (const key of Object.keys(obj)) 
+  for (const key of Object.keys(obj)) 
 	{
-		if (key === searchKey) 
+    if (key === searchKey) 
 		{
-			return obj[key];
-		}
+      obj[key] = newValue;
+      return true; 
+    }
 
-		const child = obj[key];
-		if (typeof child === 'object') 
+    const value = obj[key];
+
+    if (typeof value === "object" && value !== null) 
 		{
-			const result = FindKeyInJsonObject(child, searchKey);
-			if (result !== undefined) 
+      const changed = ChangeKeyInJsonObject(value, searchKey, newValue);
+      if (changed)
 			{
-				return result;
+				return true;
 			}
-		}
-	}
+    }
+  }
 
-	return undefined;
+  return false;
 }
 
-/* */
+/* Now Change the package.json */
 function AddOverridesFromWorkspaceFileToPackageJson(sortedOverridesData)
 {
 	const pkgPath = path.resolve("package.json");
   const pkgJson = JSON.parse(fs.readFileSync(pkgPath, "utf8"));
 
-	const KEYS = Object.keys(sortedOverridesData);
-
-	console.log(KEYS);
-	KEYS.forEach((searchKey) => {
-		const FOUND_OBJECT = FindKeyInJsonObject(pkgJson, searchKey);
-		if (FOUND_OBJECT !== undefined)
+	for (const [key, value] of Object.entries(sortedOverridesData))
+	{
+		const found = ChangeKeyInJsonObject(pkgJson, key, value);
+		if (!found)
 		{
-			console.log(FOUND_OBJECT);
+			console.log("Package ", key, " not found!");
 		}
-		
-	})
+	}
+
+	fs.writeFileSync(pkgPath, JSON.stringify(pkgJson, null, 2));
 }
 
 function AddAuditFixDataToProject()
@@ -170,11 +152,11 @@ function AddAuditFixDataToProject()
 
 	const overridesData = GetOverridesFromWorkspaceYamlFile();
 
-	console.log(overridesData);
+	console.log("Overrides Data from Workspace.yaml file: ", overridesData);
 
 	const sortedOverridesData = SortDuplicatesInOverridesData(overridesData);
 
-	console.log(sortedOverridesData);
+	console.log("Sorted Overrides Data", sortedOverridesData);
 
 	AddOverridesFromWorkspaceFileToPackageJson(sortedOverridesData);
 
