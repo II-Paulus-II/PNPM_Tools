@@ -11,7 +11,8 @@ while [ -L "$self" ]; do
 done
 SCRIPT_DIR=$(dirname -- "$self")
 
-AUDIT_SCRIPT="$SCRIPT_DIR/add-overrides.mjs"
+PACKAGE_DATE_SCRIPT="$SCRIPT_DIR/tools/check-package-dates.mjs"
+AUDIT_SCRIPT="$SCRIPT_DIR/tools/add-audit-overrides.mjs"
 
 ARGS="$@"
 echo "Removing Any Previous Workspace.yaml File"
