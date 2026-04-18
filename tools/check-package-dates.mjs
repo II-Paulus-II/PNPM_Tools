@@ -17,9 +17,7 @@ const { default: yaml } = await import(yamlPath);
 /* */
 
 const LOCKFILE = "pnpm-lock.yaml";
-const MAX_AGE_HOURS = 72;
-
-const WORKSPACE_LOCKFILE = "pnpm-workspace.yaml";
+const MAX_AGE_HOURS = 7200;
 
 function getPackagesFromLockfile() 
 {
@@ -67,12 +65,15 @@ function getPackagesFromLockfile()
 
 async function getPublishTimes(pkg, version) 
 {
-  try {
+  try 
+	{
     const res = await fetch(`https://registry.npmjs.org/${pkg}`);
     if (!res.ok) throw new Error(`Failed to fetch ${pkg}`);
     const data = await res.json();
     return data.time || {};
-  } catch (e) {
+  } 
+	catch (e) 
+	{
     console.warn(`Failed to fetch times for ${pkg}: ${e.message}`);
     return {};
   }
@@ -83,15 +84,19 @@ function addOverridesForSuspicious(suspicious)
   const pkgPath = path.resolve("package.json");
   const pkgJson = JSON.parse(fs.readFileSync(pkgPath, "utf8"));
 
-  if (!pkgJson.pnpm) {
+  if (!pkgJson.pnpm) 
+	{
 		pkgJson.pnpm = {};
 	}
-	if (!pkgJson.pnpm.overrides) {
+	if (!pkgJson.pnpm.overrides) 
+	{
 		pkgJson.pnpm.overrides = {};
 	}
 
-  for (const { NAME, version, published, hoursOld } of suspicious) {
-		if (!published || typeof published !== "object") {
+  for (const { NAME, version, published, hoursOld } of suspicious) 
+	{
+		if (!published || typeof published !== "object") 
+		{
 			console.warn(`No published data found for ${NAME}, skipping`);
 			continue;
 		}
@@ -103,7 +108,8 @@ function addOverridesForSuspicious(suspicious)
 			.filter(([v, t]) => new Date(t).getTime() <= cutoff)
 			.sort(([v1, t1], [v2, t2]) => new Date(t2) - new Date(t1))[0]?.[0];
 
-		if (!safeVersion) {
+		if (!safeVersion) 
+		{
 			console.warn(`Could not find a safe version for ${NAME}`);
 			continue;
 		}
@@ -116,7 +122,8 @@ function addOverridesForSuspicious(suspicious)
 	console.log("Overrides applied to package.json.");
 }
 
-async function checkPackages() {
+async function checkPackages() 
+{
 	const pkgs = getPackagesFromLockfile();
 	const now = new Date();
 	const suspicious = [];
@@ -124,16 +131,19 @@ async function checkPackages() {
 	const batchSize = 10;
 	let index = 0;
 
-	while (index < pkgs.length) {
+	while (index < pkgs.length) 
+	{
 		const batch = pkgs.slice(index, index + batchSize);
 
 		const results = await Promise.all(
 			batch.map(({ NAME, version }) => getPublishTimes(NAME, version).then(published => ({ NAME, version, published })))
 		);
 
-		for (const { NAME, version, published } of results) {
+		for (const { NAME, version, published } of results) 
+		{
 
-			if (!published) {
+			if (!published) 
+			{
 				suspicious.push({ NAME, version, data: "no published data" });
 				continue;
 			}
@@ -141,7 +151,8 @@ async function checkPackages() {
 			console.log("Name: ", NAME, "Version: ", version, "Time: ", timeStr);
 
 			const hoursOld = (now - timeStr) / (1000 * 60 * 60);
-			if (hoursOld < MAX_AGE_HOURS) {
+			if (hoursOld < MAX_AGE_HOURS) 
+			{
 				suspicious.push({ NAME, version, published, hoursOld });
 			}
 		}
@@ -149,7 +160,8 @@ async function checkPackages() {
 		index += batchSize;
 	}
 
-	if (suspicious.length > 0) {
+	if (suspicious.length > 0) 
+	{
 		console.log("\nSuspiciously new packages detected:");
 		suspicious.forEach(p =>
 			console.log(
@@ -160,7 +172,9 @@ async function checkPackages() {
 		);
 		addOverridesForSuspicious(suspicious);
 		process.exit(1);
-	} else {
+	} 
+	else 
+	{
 		console.log("All packages are older than threshold.");
 	}
 }
